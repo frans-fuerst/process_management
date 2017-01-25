@@ -1,0 +1,4 @@
+[
+    {"count": 0, "cmd": ["find", "/home/frans"]},
+    {"count": 3, "cmd": ["python3", "-u", "example_process.py"]}
+]
