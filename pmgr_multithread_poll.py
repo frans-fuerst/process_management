@@ -6,6 +6,7 @@
 
 import subprocess
 import threading
+import functools
 import select
 import json
 import time
@@ -15,7 +16,7 @@ import sys
 class process_handler:
 
     def __init__(self, name: str, cmd: list):
-        print('start: %s' % cmd)
+        print('start: %s' % cmd, file=sys.stderr)
         self._name = '%s(%s)' % (name, ' '.join(cmd))
         self._thread = threading.Thread(target=lambda: self._start(cmd),
                                         daemon=True)
@@ -34,7 +35,8 @@ class process_handler:
         _to_poll = [self._process.stdout,
                     self._process.stderr]
 
-        def output_line(stream:str, line:bytes) -> None:
+        def output_line(stream: str, line: bytes) -> None:
+            # here we should invoke a main thread callable
             print('%s: %s' % (stream, line.decode().strip('\n')))
 
         while self._process.poll() is None:
@@ -51,8 +53,6 @@ class process_handler:
         for l in self._process.stderr.readlines():
             output_line('stderr', l)
 
-        while self._process.poll() is None:
-            print(self._process.stdout.readline().decode().strip('\n'))
         self._process.wait()
 
     def wait(self):

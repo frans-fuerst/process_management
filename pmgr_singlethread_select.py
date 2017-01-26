@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import subprocess
+import functools
 import select
 import json
 import time
@@ -29,21 +30,19 @@ class fd_handler:
 
 
 class process_handler:
-    def __init__(self, name: str, cmd: list, fdhandler: fd_handler):
-        print('start: %s' % cmd)
+    def __init__(self, name: str, cmd: list, handler: fd_handler):
+        print('start: %s' % cmd, file=sys.stderr)
         self._name = '%s(%s)' % (name, ' '.join(cmd))
-        self._fd_handler = fdhandler
+        self._fd_handler = handler
         self._process = subprocess.Popen(
             args=cmd,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             bufsize=0)
         self._fd_handler.register(
-            self._process.stdout,
-            lambda stream: self._read_stream('stdout', stream))
+            self._process.stdout, functools.partial(self._read_stream, 'stdout'))
         self._fd_handler.register(
-            self._process.stderr,
-            lambda stream: self._read_stream('stderr', stream))
+            self._process.stderr, functools.partial(self._read_stream, 'stderr'))
 
     def __repr__(self):
         return self._name
@@ -56,9 +55,11 @@ class process_handler:
 
     def _read_stream(self, name: str, stream):
         if self._handle_program_termination(stream):
-            return
-
-        print('%s: %s' % (name, stream.readline().decode().strip('\n')))
+            # in case process has been terminated - flush the buffer
+            for l in stream.readlines():
+                print('%s: %s' % (name, l.decode().strip('\n')))
+        else:
+            print('%s: %s' % (name, stream.readline().decode().strip('\n')))
 
 
 def main():
@@ -70,9 +71,7 @@ def main():
         for _ in range(l['count']):
             processes.append(
                 process_handler(
-                    name='p%d' % len(processes),
-                    cmd=l['cmd'],
-                    fd_handler=fds))
+                    name='p%d' % len(processes), cmd=l['cmd'], handler=fds))
 
     print('start up took %.1fms' % ((time.time() - t0) * 1000),
           file=sys.stderr)

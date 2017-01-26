@@ -1,5 +1,5 @@
 [
-    {"count": 0, "cmd": ["find", "/etc"]},
-    {"count": 5, "cmd": ["python3", "example_process.py"]},
+    {"count": 10, "cmd": ["find", "/etc"]},
+    {"count": 0, "cmd": ["python3", "example_process.py"]},
     {"count": 0, "cmd": ["python3", "example_process.py", "--sleep"]}
 ]

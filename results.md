@@ -22,4 +22,6 @@ mule-frans (armv7/single/800, Python 3.5.1)
         time ./pmgr_singlethread_select.py 
             16610.8ms | real 0m17.916s, user 0m7.227s, sys 0m1.945s
 
+i5-6200U (Thinkpad x260/ Python 3.5.2)
+
 i5-3570K
