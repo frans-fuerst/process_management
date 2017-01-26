@@ -4,12 +4,12 @@
     readablity and complexity in mind
 """
 
-
 import subprocess
 import threading
 import select
 import json
 import time
+import sys
 
 
 class process_handler:
@@ -25,7 +25,6 @@ class process_handler:
         return self._name
 
     def _start(self, cmd: list):
-        import select
         self._process = subprocess.Popen(
             args=cmd,
             stdout=subprocess.PIPE,
@@ -64,23 +63,21 @@ def main():
     processes = []
     t0 = time.time()
     for l in json.load(open('processes.json'), encoding='utf-8'):
-        for c in range(l['count']):
-            try:
-                processes.append(process_handler(
-                                    name='p%d' % len(processes),
-                                    cmd=l['cmd']))
-            except FileNotFoundError:
-                print('could not start %s' % l)
+        for _ in range(l['count']):
+            processes.append(process_handler(
+                                name='p%d' % len(processes),
+                                cmd=l['cmd']))
 
-    print('start up took %.1fms' % ((time.time() - t0) * 1000))
+    print('start up took %.1fms' % ((time.time() - t0) * 1000),
+          file=sys.stderr)
 
     for p in processes:
         print('wait for %r' % p)
         p.wait()
 
-    print('execution took %.1fms' % ((time.time() - t0) * 1000))
+    print('execution took %.1fms' % ((time.time() - t0) * 1000),
+          file=sys.stderr)
 
 
 if __name__ == '__main__':
     main()
-

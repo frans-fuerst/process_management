@@ -4,6 +4,7 @@ import subprocess
 import select
 import json
 import time
+import sys
 
 
 class fd_handler:
@@ -28,10 +29,10 @@ class fd_handler:
 
 
 class process_handler:
-    def __init__(self, name: str, cmd: list, fd_handler: fd_handler):
+    def __init__(self, name: str, cmd: list, fdhandler: fd_handler):
         print('start: %s' % cmd)
         self._name = '%s(%s)' % (name, ' '.join(cmd))
-        self._fd_handler = fd_handler
+        self._fd_handler = fdhandler
         self._process = subprocess.Popen(
             args=cmd,
             stdout=subprocess.PIPE,
@@ -66,23 +67,21 @@ def main():
 
     t0 = time.time()
     for l in json.load(open('processes.json'), encoding='utf-8'):
-        for c in range(l['count']):
-            try:
-                processes.append(process_handler(
-                                    name='p%d' % len(processes),
-                                    cmd=l['cmd'],
-                                    fd_handler=fds))
-            except FileNotFoundError:
-                print('could not start %s' % l)
+        for _ in range(l['count']):
+            processes.append(
+                process_handler(
+                    name='p%d' % len(processes),
+                    cmd=l['cmd'],
+                    fd_handler=fds))
 
-    print('start up took %.1fms' % ((time.time() - t0) * 1000))
+    print('start up took %.1fms' % ((time.time() - t0) * 1000),
+          file=sys.stderr)
 
     while fds.size() > 0:
-#        print('main loop, fd size = %d' % fds.size())
         fds.wait_and_process()
 
-    print('execution took %.1fms' % ((time.time() - t0) * 1000))
+    print('execution took %.1fms' % ((time.time() - t0) * 1000),
+          file=sys.stderr)
 
 if __name__ == '__main__':
     main()
-
