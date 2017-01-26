@@ -25,11 +25,33 @@ class process_handler:
         return self._name
 
     def _start(self, cmd: list):
+        import select
         self._process = subprocess.Popen(
-            args=cmd, 
+            args=cmd,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             bufsize=0)
+
+        _to_poll = [self._process.stdout,
+                    self._process.stderr]
+
+        def output_line(stream:str, line:bytes) -> None:
+            print('%s: %s' % (stream, line.decode().strip('\n')))
+
+        while self._process.poll() is None:
+            for d in select.select(_to_poll, [], [])[0]:
+                if d == self._process.stdout:
+                    output_line('stdout', d.readline())
+                if d == self._process.stderr:
+                    output_line('stderr', d.readline())
+
+        # process is not running any more - read messages in the
+        # buffers and terminate the read loop
+        for l in self._process.stdout.readlines():
+            output_line('stdout', l)
+        for l in self._process.stderr.readlines():
+            output_line('stderr', l)
+
         while self._process.poll() is None:
             print(self._process.stdout.readline().decode().strip('\n'))
         self._process.wait()
@@ -45,7 +67,7 @@ def main():
         for c in range(l['count']):
             try:
                 processes.append(process_handler(
-                                    name='p%d' % len(processes), 
+                                    name='p%d' % len(processes),
                                     cmd=l['cmd']))
             except FileNotFoundError:
                 print('could not start %s' % l)

@@ -14,14 +14,14 @@ class fd_handler:
         self._fds[fd] = cb
 
     def unregister(self, fd: int) -> None:
-        del self._fds[fd]
+        _new_fds = dict(self._fds)
+        del _new_fds[fd]
+        self._fds = _new_fds
 
-    def wait_and_process(self):
-        for _fd in select.select(self._fds.keys(), [], [])[0]:
-#            t = time.time()
-            self._fds[_fd]()
-#            d = time.time() - t
-#            print('callback took %.1fms' % (d * 1000))
+    def wait_and_process(self) -> None:
+        _fds = self._fds
+        for _fd in select.select(_fds.keys(), [], [])[0]:
+            _fds[_fd](_fd)
 
     def size(self) -> int:
         return len(self._fds)
@@ -32,27 +32,32 @@ class process_handler:
         print('start: %s' % cmd)
         self._name = '%s(%s)' % (name, ' '.join(cmd))
         self._fd_handler = fd_handler
-        self._process = subprocess.Popen(args=cmd, stdout=subprocess.PIPE)
-        self._fd_handler.register(self._process.stdout.fileno(), self._read_stdout)
+        self._process = subprocess.Popen(
+            args=cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            bufsize=0)
+        self._fd_handler.register(
+            self._process.stdout,
+            lambda stream: self._read_stream('stdout', stream))
+        self._fd_handler.register(
+            self._process.stderr,
+            lambda stream: self._read_stream('stderr', stream))
 
     def __repr__(self):
         return self._name
 
-    def _handle_program_termination(self):
+    def _handle_program_termination(self, stream):
         if self._process.poll() is None:
             return False
-        self._fd_handler.unregister(self._process.stdout.fileno())
+        self._fd_handler.unregister(stream)
         return True
 
-    def _read_stdout(self):
-        if self._handle_program_termination():
+    def _read_stream(self, name: str, stream):
+        if self._handle_program_termination(stream):
             return
 
-        _line = self._process.stdout.readline().decode()
-        if _line == '':
-            return
-
-        print(_line.strip('\n'))
+        print('%s: %s' % (name, stream.readline().decode().strip('\n')))
 
 
 def main():
@@ -64,7 +69,7 @@ def main():
         for c in range(l['count']):
             try:
                 processes.append(process_handler(
-                                    name='p%d' % len(processes), 
+                                    name='p%d' % len(processes),
                                     cmd=l['cmd'],
                                     fd_handler=fds))
             except FileNotFoundError:
